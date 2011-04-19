@@ -8,11 +8,11 @@
     <version>0.10-SNAPSHOT</version>
   </parent>
   <groupId>org.sakaiproject.nakamura</groupId>
-  <artifactId>org.sakaiproject.nakamura.solr</artifactId>
+  <artifactId>org.sakaiproject.nakamura.core</artifactId>
   <packaging>bundle</packaging>
   <version>0.10-SNAPSHOT</version>
-  <name>Sakai Nakamura :: Solr based search service.</name>
-  <description>A Solr bundle that embeds Solr 4 into OSGi and makes an embeded server available or references a remote server.</description>
+  <name>Sakai Nakamura :: Cassandra based server bundle.</name>
+  <description>Server that uses Cassandra.</description>
   <build>
     <plugins>
       <plugin>
@@ -27,59 +27,28 @@
           <instructions>
             <Bundle-Category>sakai-nakamura</Bundle-Category>
             <Export-Package>
-              org.sakaiproject.nakamura.api.solr.*,
-              org.apache.lucene.index;-split-package:=merge-first,
-              org.apache.lucene.analysis,
-              org.apache.lucene.queryParser,
-              org.apache.lucene.search;-split-package:=merge-first,
-              org.apache.lucene.util,
-              org.apache.solr.common,
-              org.apache.solr.common.params,
-              org.apache.solr.common.util,
-              org.apache.solr.client.solrj,
-              org.apache.solr.client.solrj.response,
-              org.apache.solr.client.solrj.util,
-              org.apache.solr.schema
+              org.sakaiproject.nakamura.api.lite.*
 			</Export-Package>
 			<Import-Package>
-			!org.apache.noggit,
-			!com.werken.*,
-			!org.apache.log.*,
-			!org.apache.tools.ant.*,
-			!org.apache.log4j.*,
-			!jline.*,
-			!org.jdom.*,
-			!org.apache.struts.*,
-			!org.apache.commons.logging.*,
-			!org.dom4j.*,
-			!org.apache.regexp.*,
-            com.ctc.wstx.stax;resolution:=optional,
-            org.mortbay.*;resolution:=optional,
+			   !org.jboss.resource.adapter.jdbc.*,
+			   !com.mchange.v2.c3p0.*,
+			   !org.apache.xpath.*,
+			   !org.apache.xalan.*,
+			   !org.apache.xml.utils.*,
+			   !org.apache.derby.impl.drda.*,
+			   !org.apache.commons.cli.*,
+			   !org.json.simple.*,
+			   !com.reardencommerce.*,
+			   !jline,
+			   !org.apache.hadoop.*,
+			   !org.antlr.runtime.*,
+			   !org.cliffc.high_scale_lib.*,
+			   !com.sun.jna.*,
+			   !org.junit.*,
                *
-             </Import-Package>
-            <Private-Package>org.sakaiproject.nakamura.solr.*, org.apache.solr.core;-split-package:=merge-first</Private-Package>
-            <Embed-Transitive>true</Embed-Transitive>
-            <Embed-Dependency>
-               solr-core,
-               solr-solrj,
-               lucene-core,
-               lucene-analyzers-common,
-               lucene-analyzers-phonetic,
-               lucene-highlighter,
-               lucene-memory,
-               lucene-misc,
-               lucene-queries,
-               lucene-spatial,
-               lucene-spellchecker,
-               zookeeper,
-               velocity,
-               oro,
-               velocity-tools,
-               commons-validator,
-               commons-digester,
-               solr-commons-csv,
-               commons-beanutils
-            </Embed-Dependency>
+			</Import-Package>
+            <Private-Package>org.sakaiproject.nakamura.lite.*</Private-Package>
+            <Embed-Dependency>libthrift,apache-cassandra,mysql-connector-java,derby</Embed-Dependency>
           </instructions>
         </configuration>
       </plugin>
@@ -87,39 +56,55 @@
   </build>
   <dependencies>
   
-     <dependency>
-      <groupId>org.apache.solr</groupId>
-      <artifactId>solr-solrj</artifactId>
-      <version>4.0.1040465</version>
-     </dependency>
-     <dependency>
-      <groupId>org.apache.solr</groupId>
-      <artifactId>solr-core</artifactId>
-      <version>4.0.1040465</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.zookeeper</groupId>
-       <artifactId>zookeeper</artifactId>
-       <version>3.3.2</version>
-     </dependency>
-     <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
-      <version>2.4</version>
-     </dependency>
      
-     
-     
-    <!-- We also need slf4j -->
+    <!--  Obviously we need thrift. -->
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
+      <groupId>org.apache.cassandra.deps</groupId>
+      <artifactId>libthrift</artifactId>
+	  <!--
+      <version>r917130</version>
+	  -->
+      <version>0.5.0</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
+      <groupId>org.apache.cassandra.thrift</groupId>
+      <artifactId>apache-cassandra</artifactId>
+      <version>0.6.5</version>
+      <scope>provided</scope>
     </dependency>
-
+    
+    <dependency>
+       <groupId>commons-pool</groupId>
+       <artifactId>commons-pool</artifactId>
+       <version>1.5</version>
+    </dependency>
+    
+    <dependency>
+       <groupId>commons-lang</groupId>
+       <artifactId>commons-lang</artifactId>
+       <version>2.5</version>
+    </dependency>
+    
+    <dependency>
+       <groupId>commons-io</groupId>
+       <artifactId>commons-io</artifactId>
+       <version>1.4</version>
+    </dependency>
+    <dependency>
+       <groupId>commons-codec</groupId>
+       <artifactId>commons-codec</artifactId>
+       <version>1.4</version>
+    </dependency>
+    
+    
+    <dependency>
+      <groupId>com.google.collections</groupId>
+      <artifactId>google-collections</artifactId>
+      <version>0.8</version>
+    </dependency>
+    
+    <!-- osgi for events -->
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.osgi.core</artifactId>
@@ -129,36 +114,20 @@
       <artifactId>org.osgi.compendium</artifactId>
     </dependency>
     
-    
+
+    <!-- We also need slf4j -->
     <dependency>
-     <groupId>org.sakaiproject.nakamura</groupId>
-     <artifactId>org.sakaiproject.nakamura.core</artifactId>
-     <version>0.10-SNAPSHOT</version>
-    </dependency>
-    
-    <dependency>
-     <groupId>org.apache.sling</groupId>
-     <artifactId>org.apache.sling.api</artifactId>
-     <version>2.1.0</version>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
-     <groupId>org.apache.sling</groupId>
-     <artifactId>org.apache.sling.jcr.api</artifactId>
-     <version>2.1.0</version>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.sling</groupId>
-      <artifactId>org.apache.sling.commons.osgi</artifactId>
-      <version>2.0.6</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.collections</groupId>
-      <artifactId>google-collections</artifactId>
-      <version>0.8</version>
-    </dependency>
-    <dependency>
-      <groupId>javax.jcr</groupId>
-      <artifactId>jcr</artifactId>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>1.8.5</version>
     </dependency>
 
     <!--  Since we will be running in OSGi we also include the following -->
@@ -166,12 +135,16 @@
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.scr.annotations</artifactId>
     </dependency>
-    
     <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-all</artifactId>
-      <version>1.8.5</version>
+      <groupId>org.apache.derby</groupId>
+      <artifactId>derby</artifactId>
+      <version>10.6.2.1</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>5.1.13</version>
     </dependency>
   </dependencies>
   <reporting>
