@@ -113,10 +113,10 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         }
         return outputDocs;
       } else {
-        LOGGER.info("Ignored action at path:{}  require on {} ", path, event);
+        LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
       }
     } else {
-      LOGGER.info("No update action require on {} ", event);
+      LOGGER.debug("No update action require on {} ", event);
     }
     return ImmutableList.of();
   }
@@ -133,7 +133,10 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         doc.setField(FIELD_RESOURCE_TYPE, content.getProperty("sling:resourceType"));
       }
       String path = content.getPath();
-      doc.setField(FIELD_ID, path);
+      // we don't overwrite the id field if it has been provided
+      if (!doc.getFieldNames().contains(FIELD_ID)) {
+        doc.setField(FIELD_ID, path);
+      }
       while( path != null ) {
         doc.addField(FIELD_PATH, path);
         String newPath = Utils.getParentPath(path);
@@ -178,11 +181,11 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
                       resourceType, handler, path, indexers });
                   return handler;
                 } else {
-                  LOGGER.info("Ignored {} no handler for {} ", path, resourceType);
+                  LOGGER.debug("Ignored {} no handler for {} ", path, resourceType);
                   ignoreCache.put(path, path);
                 }
               } else {
-                LOGGER.info("Ignored {} no resource type ",path);
+                LOGGER.debug("Ignored {} no resource type ",path);
               }
             }
           }
