@@ -8,7 +8,7 @@
     <version>0.10-SNAPSHOT</version>
   </parent>
   <groupId>org.sakaiproject.nakamura</groupId>
-  <artifactId>org.sakaiproject.nakamura.solr</artifactId>
+  <artifactId>org.sakaiproject.nakamura.solr-myberkeley</artifactId>
   <packaging>bundle</packaging>
   <version>0.10-SNAPSHOT</version>
   <name>Sakai Nakamura :: Solr based search service.</name>
