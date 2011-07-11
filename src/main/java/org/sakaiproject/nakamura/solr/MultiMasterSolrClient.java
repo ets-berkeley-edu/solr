@@ -1,5 +1,8 @@
 package org.sakaiproject.nakamura.solr;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -10,6 +13,8 @@ import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
+import org.apache.solr.client.solrj.impl.BinaryResponseParser;
+import org.apache.solr.client.solrj.impl.StreamingUpdateSolrServer;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.NakamuraSolrConfig;
 import org.apache.solr.core.SolrConfig;
@@ -27,36 +32,80 @@ import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Dictionary;
+import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
 
-@Component(immediate = true, metatype = true)
+@Component(immediate = true, metatype = true, enabled = false)
 @Service(value = SolrServerService.class)
-public class EmbeddedSolrClient implements SolrServerService {
+public class MultiMasterSolrClient implements SolrServerService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedSolrClient.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(MultiMasterSolrClient.class);
+
+  @Property(value = "embedded")
+  private static final String PROP_CLUSTER_CONFIG_MODE = "cluster.config.mode";
+
+  @Property(value = "solrconfig.xml")
+  private static final String PROP_SOLR_CONFIG = "solrconfig";
+  @Property(value = "solrconfig.xml")
+  private static final String PROP_SOLR_SCHEMA = "solrschema";
+
+  @Property(value = "http://localhost:8983/solr")
+  private static final String PROP_SOLR_URL = "remoteurl";
+
+  @Property(intValue = 1)
+  private static final String PROP_MAX_RETRIES = "max.retries";
+
+  @Property(boolValue = true)
+  private static final String PROP_ALLOW_COMPRESSION = "allow.compression";
+
+  @Property(boolValue = false)
+  private static final String PROP_FOLLOW = "follow.redirects";
+
+  @Property(intValue = 100)
+  private static final String PROP_MAX_TOTAL_CONNECTONS = "max.total.connections";
+
+  @Property(intValue = 100)
+  private static final String PROP_MAX_CONNECTONS_PER_HOST = "max.connections.per.host";
+
+  @Property(intValue = 100)
+  private static final String PROP_CONNECTION_TIMEOUT = "connection.timeout";
+
+  @Property(intValue = 1000)
+  private static final String PROP_SO_TIMEOUT = "socket.timeout";
+
+  @Property(intValue = 100)
+  private static final String PROP_QUEUE_SIZE = "indexer.queue.size";
+
+  @Property(intValue = 10)
+  private static final String PROP_THREAD_COUNT = "indexer.thread.count";
 
   private static final String LOGGER_KEY = "org.sakaiproject.nakamura.logger";
   private static final String LOGGER_VAL = "org.apache.solr";
+
   /**
    * According to the doc, this is thread safe and must be shared between all threads.
    */
   private EmbeddedSolrServer server;
+  /**
+   * This should be the Solr server that accepts updates. This might be local or it might
+   * be remote, depending on election.
+   */
+  private SolrServer updateServer;
   private String solrHome;
   private CoreContainer coreContainer;
   private SolrCore nakamuraCore;
-
-  @Property(value = "solrconfig.xml")
-  private static final String PROP_SOLR_CONFIG = "solrconfig";
-  @Property(value = "schema.xml")
-  private static final String PROP_SOLR_SCHEMA = "solrschema";
 
   @Reference
   protected ConfigurationAdmin configurationAdmin;
@@ -64,12 +113,18 @@ public class EmbeddedSolrClient implements SolrServerService {
   @Activate
   public void activate(ComponentContext componentContext) throws IOException,
       ParserConfigurationException, SAXException {
+
+    Map<String, Object> multiMasterProperties = getMultiMasterProperties(toMap(componentContext
+        .getProperties()));
+    String configLocation = "solrconfig.xml";
+    String schemaLocation = "schema.xml";
+    if (multiMasterProperties != null) {
+      configLocation = (String) multiMasterProperties.get(PROP_SOLR_CONFIG);
+      schemaLocation = (String) multiMasterProperties.get(PROP_SOLR_SCHEMA);
+    }
+
     BundleContext bundleContext = componentContext.getBundleContext();
     solrHome = Utils.getSolrHome(bundleContext);
-    @SuppressWarnings("unchecked")
-    Dictionary<String, Object> properties = componentContext.getProperties();
-    String schemaLocation = OsgiUtil.toString(properties.get(PROP_SOLR_SCHEMA), "schema.xml");
-    String configLocation = OsgiUtil.toString(properties.get(PROP_SOLR_CONFIG), "solrconfig.xml");
     // Note that the following property could be set through JVM level arguments too
     LOGGER.debug("Logger for Embedded Solr is in {slinghome}/log/solr.log at level INFO");
     Configuration logConfiguration = getLogConfiguration();
@@ -105,10 +160,8 @@ public class EmbeddedSolrClient implements SolrServerService {
       coreContainer = new CoreContainer(loader);
       configStream = getStream(configLocation);
       schemaStream = getStream(schemaLocation);
-      LOGGER.info("Configuring with Config {} schema {} ",configLocation, schemaLocation);
-      SolrConfig config = new NakamuraSolrConfig(loader, configLocation,
-          configStream);
-      IndexSchema schema = new IndexSchema(config, schemaLocation, schemaStream);
+      SolrConfig config = new NakamuraSolrConfig(loader, configLocation, configStream);
+      IndexSchema schema = new IndexSchema(config, null, schemaStream);
       nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config, schema,
           null);
       coreContainer.register("nakamura", nakamuraCore, false);
@@ -121,16 +174,85 @@ public class EmbeddedSolrClient implements SolrServerService {
       safeClose(configStream);
     }
 
+    if (multiMasterProperties == null) {
+      updateServer = server;
+    } else {
+      updateServer = createUpdateServer(multiMasterProperties);
+    }
   }
 
   private void safeClose(InputStream stream) {
-    if ( stream != null ) {
+    if (stream != null) {
       try {
         stream.close();
-      } catch ( IOException e ){
-        LOGGER.debug(e.getMessage(),e);
+      } catch (IOException e) {
+        LOGGER.debug(e.getMessage(), e);
       }
     }
+  }
+
+  /**
+   * @param map
+   * @return
+   */
+  private Map<String, Object> getMultiMasterProperties(Map<String, Object> properties) {
+    String clusterConfigMode = OsgiUtil.toString(
+        properties.get(PROP_CLUSTER_CONFIG_MODE), "election");
+    if ("embedded".equals(clusterConfigMode)) {
+      return null;
+    } else if ("election".equals(clusterConfigMode)) {
+      // perform an election and get the properties from the master node.
+      // TODO
+    }
+    // is the config mode is not election or embedded, then its configured on a per node
+    // basis and already in the properties.
+    // properties contain the master configuration.
+    return properties;
+  }
+
+  private Map<String, Object> toMap(@SuppressWarnings("rawtypes") Dictionary properties) {
+    Builder<String, Object> b = ImmutableMap.builder();
+    for (Enumeration<?> e = properties.keys(); e.hasMoreElements();) {
+      String k = (String) e.nextElement();
+      b.put(k, properties.get(k));
+    }
+    return b.build();
+  }
+
+  private SolrServer createUpdateServer(Map<String, Object> properties)
+      throws MalformedURLException {
+    String url = OsgiUtil.toString(properties.get(PROP_SOLR_URL),
+        "http://localhost:8983/solr");
+
+    StreamingUpdateSolrServer remoteServer = new StreamingUpdateSolrServer(url,
+        OsgiUtil.toInteger(properties.get(PROP_QUEUE_SIZE), 100), OsgiUtil.toInteger(
+            properties.get(PROP_THREAD_COUNT), 10));
+    remoteServer.setSoTimeout(OsgiUtil.toInteger(properties.get(PROP_SO_TIMEOUT), 1000)); // socket
+    // read
+    // timeout
+    remoteServer.setConnectionTimeout(OsgiUtil.toInteger(
+        properties.get(PROP_CONNECTION_TIMEOUT), 100));
+    remoteServer.setDefaultMaxConnectionsPerHost(OsgiUtil.toInteger(
+        properties.get(PROP_MAX_CONNECTONS_PER_HOST), 100));
+    remoteServer.setMaxTotalConnections(OsgiUtil.toInteger(
+        properties.get(PROP_MAX_TOTAL_CONNECTONS), 100));
+    remoteServer
+        .setFollowRedirects(OsgiUtil.toBoolean(properties.get(PROP_FOLLOW), false)); // defaults
+    // to
+    // false
+    // allowCompression defaults to false.
+    // Server side must support gzip or deflate for this to have any effect.
+    remoteServer.setAllowCompression(OsgiUtil.toBoolean(
+        properties.get(PROP_ALLOW_COMPRESSION), true));
+    remoteServer.setMaxRetries(OsgiUtil.toInteger(properties.get(PROP_MAX_RETRIES), 1)); // defaults
+    // to 0.
+    // > 1
+    // not
+    // recommended.
+    remoteServer.setParser(new BinaryResponseParser()); // binary parser is used by
+                                                        // default
+
+    return remoteServer;
   }
 
   private Configuration getLogConfiguration() throws IOException {
@@ -147,7 +269,7 @@ public class EmbeddedSolrClient implements SolrServerService {
     return logConfiguration;
   }
 
-  private InputStream getStream(String name) throws IOException {
+  private InputStream getStream(String name) throws FileNotFoundException {
     if (name.contains(":")) {
       // try a URL
       try {
@@ -166,19 +288,15 @@ public class EmbeddedSolrClient implements SolrServerService {
       return new FileInputStream(f);
     } else {
       // try classpath
-      InputStream in = this.getClass().getClassLoader().getResourceAsStream(name);
-      if ( in == null ) {
-        LOGGER.error("Failed to locate stream {}, tried URL, filesystem ", name);
-        throw new IOException("Failed to locate stream "+name+", tried URL, filesystem ");
-      }
-      return null;
+      return this.getClass().getResourceAsStream(name);
     }
   }
 
   private void deployFile(File destDir, String target) throws IOException {
     if (!destDir.isDirectory()) {
-      if ( !destDir.mkdirs() ) {
-        LOGGER.warn("Unable to create dest dir {} for {}, may cause later problems ",destDir, target );
+      if (!destDir.mkdirs()) {
+        LOGGER.warn("Unable to create dest dir {} for {}, may cause later problems ",
+            destDir, target);
       }
     }
     File destFile = new File(destDir, target);
@@ -202,12 +320,11 @@ public class EmbeddedSolrClient implements SolrServerService {
   }
 
   public SolrServer getUpdateServer() {
-    return server;
+    return updateServer;
   }
 
   public String getSolrHome() {
     return solrHome;
   }
-
 
 }
