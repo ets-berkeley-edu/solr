@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.sakaiproject.nakamura</groupId>
-  <artifactId>org.sakaiproject.nakamura.solr</artifactId>
+  <artifactId>org.sakaiproject.nakamura.solr-myberkeley</artifactId>
   <packaging>bundle</packaging>
   <version>1.0.2</version>
   <name>Sakai Nakamura :: Solr based search service.</name>
@@ -339,26 +339,23 @@
 <!-- D I S T R I B U T I O N M A N A G E M E N T -->
 <!-- ====================================================================== -->
   <distributionManagement>
-    <downloadUrl>http://source.sakaiproject.org/maven2/</downloadUrl>
-      <snapshotRepository>
-        <uniqueVersion>false</uniqueVersion>
-        <id>sakai-maven-snapshots-scp</id>
-        <name>Sakai snapshot Repo</name>
-        <url>scp://source.sakaiproject.org/var/www/html/maven2-snapshots</url>
-        <layout>default</layout>
-      </snapshotRepository>
-      <repository>
-        <uniqueVersion>false</uniqueVersion>
-        <id>sakai-maven2-scp</id>
-        <name>Sakai maven2 repository</name>
-        <url>scp://source.sakaiproject.org/var/www/html/maven2</url>
-        <layout>default</layout>
-      </repository>
-      <site>
-        <id>sakai-site</id>
-        <name>Sakai release Site</name>
-        <url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
-      </site>
+    <snapshotRepository>
+      <id>myberkeley-snapshots</id>
+      <name>MyBerkeley Snapshots</name>
+      <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley-snapshots/</url>
+      <uniqueVersion>false</uniqueVersion>
+    </snapshotRepository>
+    <repository>
+      <id>myberkeley</id>
+      <name>MyBerkeley</name>
+      <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley/</url>
+      <uniqueVersion>false</uniqueVersion>
+    </repository>
+    <site>
+      <id>sakai-site</id>
+      <name>Sakai release Site</name>
+      <url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
+    </site>
   </distributionManagement>
   <repositories>
     <repository>
@@ -374,15 +371,23 @@
       </snapshots>
     </repository>
     <repository>
-      <id>sakai-maven2-snapshots</id>
-      <name>Sakai Maven Repo</name>
-      <layout>default</layout>
-      <url>http://source.sakaiproject.org/maven2-snapshots</url>
+      <id>myberkeley-snapshots</id>
+      <url>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley-snapshots</url>
       <releases>
         <enabled>false</enabled>
       </releases>
       <snapshots>
         <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>myberkeley</id>
+      <url>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
       </snapshots>
     </repository>
   </repositories>

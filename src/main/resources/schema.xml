@@ -643,6 +643,10 @@
         unknown fields indexed and/or stored by default --> 
    <!--dynamicField name="*" type="ignored" multiValued="true" /-->
    
+   <!-- MyBerkeley additions -->
+   <field name="myb-demographics" type="string" indexed="true" stored="false" multiValued="true"/>
+   <field name="myb-context" type="string" indexed="true" stored="false" multiValued="false"/>
+   
  </fields>
 
  <!-- Field to use to determine and enforce document uniqueness. 
