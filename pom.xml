@@ -179,7 +179,6 @@
               org.sakaiproject.nakamura.api.solr.*,
               org.apache.lucene.analysis,
               org.apache.lucene.index;-split-package:=merge-first,
-              org.apache.lucene.queryParser,
               org.apache.lucene.queryparser.classic,
               org.apache.lucene.search;-split-package:=merge-first,
               org.apache.lucene.util,
@@ -207,7 +206,7 @@
                *
              </Import-Package>
             <Private-Package>
-                  org.sakaiproject.nakamura.solr.*, 
+                  org.sakaiproject.nakamura.solr.*,
                   org.apache.solr.core;-split-package:=merge-first,
                   org.apache.lucene.*;-split-package:=merge-first
             </Private-Package>
@@ -224,7 +223,6 @@
                lucene-misc,
                lucene-queries,
                lucene-spatial,
-               lucene-spellchecker,
                zookeeper,
                velocity,
                oro,
@@ -417,38 +415,44 @@
 <!-- D I S T R I B U T I O N M A N A G E M E N T -->
 <!-- ====================================================================== -->
   <distributionManagement>
-    <snapshotRepository>
-      <id>myberkeley-snapshots</id>
-      <name>MyBerkeley Snapshots</name>
-      <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley-snapshots/</url>
-      <uniqueVersion>false</uniqueVersion>
-    </snapshotRepository>
-    <repository>
-      <id>myberkeley</id>
-      <name>MyBerkeley</name>
-      <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley/</url>
-      <uniqueVersion>false</uniqueVersion>
-    </repository>
-    <site>
-      <id>sakai-site</id>
-      <name>Sakai release Site</name>
-      <url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
-    </site>
+    <downloadUrl>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley/</downloadUrl>
+      <snapshotRepository>
+        <uniqueVersion>false</uniqueVersion>
+        <id>myberkeley-snapshots-scp</id>
+        <name>MyBerkeley snapshot Repo</name>
+        <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley-snapshots</url>
+        <layout>default</layout>
+      </snapshotRepository>
+      <repository>
+        <uniqueVersion>false</uniqueVersion>
+        <id>myberkeley</id>
+        <name>MyBerkeley maven2 repository</name>
+        <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley</url>
+        <layout>default</layout>
+      </repository>
+      <site>
+        <id>sakai-site</id>
+        <name>Sakai release Site</name>
+        <url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
+      </site>
   </distributionManagement>
   <repositories>
     <repository>
-      <id>sakai-releases</id>
-      <name>Sakai Releases</name>
+      <id>myberkeley</id>
+      <name>MyBerkeley Maven Repo</name>
+      <layout>default</layout>
+      <url>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley</url>
       <releases>
-        <enabled>true</enabled>
+       <enabled>true</enabled>
       </releases>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
-      <url>http://source.sakaiproject.org/maven2/</url>
     </repository>
     <repository>
       <id>myberkeley-snapshots</id>
+      <name>MyBerkeley Maven Repo</name>
+      <layout>default</layout>
       <url>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley-snapshots</url>
       <releases>
         <enabled>false</enabled>
@@ -457,15 +461,18 @@
         <enabled>true</enabled>
       </snapshots>
     </repository>
-    <repository>
-      <id>myberkeley</id>
-      <url>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley</url>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>apache-plugin-snapshot</id>
+      <name>Apache Snapshots Plugins</name>
       <releases>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </releases>
       <snapshots>
-        <enabled>false</enabled>
+        <enabled>true</enabled>
       </snapshots>
-    </repository>
-  </repositories>
+      <url>http://repository.apache.org/snapshots/</url>
+    </pluginRepository>
+  </pluginRepositories>
 </project>
