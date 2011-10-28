@@ -418,7 +418,7 @@
     <downloadUrl>http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley/</downloadUrl>
       <snapshotRepository>
         <uniqueVersion>false</uniqueVersion>
-        <id>myberkeley-snapshots-scp</id>
+        <id>myberkeley-snapshots</id>
         <name>MyBerkeley snapshot Repo</name>
         <url>dav:http://svn.media.berkeley.edu/nexus/content/repositories/myberkeley-snapshots</url>
         <layout>default</layout>
