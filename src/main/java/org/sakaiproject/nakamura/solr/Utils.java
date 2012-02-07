@@ -80,7 +80,7 @@ public class Utils {
             return defaultArray;
 
         } else if (property instanceof String) {
-            return ((String) property).split("\\|");
+            return new String[] { (String) property };
 
         } else if (property instanceof String[]) {
             // String[]
