@@ -367,7 +367,7 @@ public class QueueManager implements Runnable {
 					backoff = 0;
 					commit();
 				} catch (SolrServerException e) {
-					if (e.getCause() instanceof ConnectException) {
+					if (e.getCause() instanceof ConnectException || e.getMessage().contains("try again")) {
 						if (backoff == 0) {
 							backoff = 2;
 						} else if (backoff > 60) {
@@ -375,9 +375,14 @@ public class QueueManager implements Runnable {
 						} else {
 							backoff = backoff * 2;
 						}
-						LOGGER.warn(
+						if ( e.getMessage().contains("try again") ) {
+						    LOGGER.warn(
+                                                        "Received transient Solr exception, will retry index operation in {}s", backoff);
+						} else {    
+						    LOGGER.warn(
 								"Remote Solr master is down, will retry index operation in {}s ",
 								backoff);
+						}
 
 						rollback();
 						Thread.sleep(1000 * backoff);
