@@ -390,12 +390,7 @@ public class QueueManager implements Runnable {
 						LOGGER.warn(
 								" Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "
 										+ e.getMessage(), e);
-						try {
-							service.rollback();
-						} catch (Exception e1) {
-							LOGGER.warn(e.getMessage(), e1);
-						}
-			            backoff = 0;
+						backoff = 0;
 						commit();
 					}
 				} catch (IOException e) {
