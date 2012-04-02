@@ -89,34 +89,33 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
-      String path = (String) event.getProperty(FIELD_PATH);
-      if (!ignore(path)) {
-        LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-        Collection<SolrInputDocument> docs = getHandler(repositorySession, path)
-            .getDocuments(repositorySession, event);
+      final IndexingHandler indexingHandler = getHandler(repositorySession, event);
+      if (indexingHandler != null) {
+        LOGGER.debug("Update action at path:{}  require on {} ", event.getProperty(FIELD_PATH), event);
+        Collection<SolrInputDocument> docs = indexingHandler.getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         if ( docs != null ) {
-	        for (SolrInputDocument doc : docs) {
-	          for (String name : doc.getFieldNames()) {
-	            // loop through the fields of the returned docs to make sure they contain
-	            // atleast 1 field that is not a system property. this is not to filter out
-	            // any system properties but to make sure there are more things to index than
-	            // just system properties.
-	            if (!SYSTEM_PROPERTIES.contains(name)) {
-	              try {
-	                addDefaultFields(doc, repositorySession);
-	                outputDocs.add(doc);
-	              } catch (StorageClientException e) {
-	                LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
-	              }
-	              break;
-	            }
-	          }
-	        }
+          for (SolrInputDocument doc : docs) {
+            for (String name : doc.getFieldNames()) {
+              // loop through the fields of the returned docs to make sure they contain
+              // atleast 1 field that is not a system property. this is not to filter out
+              // any system properties but to make sure there are more things to index than
+              // just system properties.
+              if (!SYSTEM_PROPERTIES.contains(name)) {
+                try {
+                  addDefaultFields(doc, repositorySession);
+                  outputDocs.add(doc);
+                } catch (StorageClientException e) {
+                  LOGGER.warn("Failed to index {} cause: {} ", event.getProperty(FIELD_PATH), e.getMessage());
+                }
+                break;
+              }
+            }
+          }
         }
         return outputDocs;
       } else {
-        LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
+        LOGGER.debug("Ignored action at path:{}  require on {} ", event.getProperty(FIELD_PATH), event);
       }
     } else {
       LOGGER.debug("No update action require on {} ", event);
@@ -162,6 +161,28 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     Session session = repositorySession.adaptTo(Session.class);
     AccessControlManager accessControlManager = session.getAccessControlManager();
     return accessControlManager.findPrincipals(zone, path,Permissions.CAN_READ.getPermission(), true);
+  }
+
+  private IndexingHandler getHandler(RepositorySession repositorySession, Event event) {
+    String path = (String) event.getProperty(FIELD_PATH);
+    if (!ignore(path)) {
+      // The content might have been deleted by the event, or we might not
+      // have been given a content session to work with, and so we first
+      // check the resourceType cached in the event record itself.
+      String resourceType = (String) event.getProperty("resourceType");
+      if ((resourceType != null) && indexers.containsKey(resourceType)) {
+        return indexers.get(resourceType);
+      } else {
+        if (repositorySession != null) {
+          return getHandler(repositorySession, path);
+        } else {
+          // If there is no content system to walk, then we're done.
+          return defaultHandler;
+        }
+      }
+    } else {
+      return null;
+    }
   }
 
   private IndexingHandler getHandler(RepositorySession repositorySession, String path) {
@@ -210,47 +231,30 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.DELETE_TOPIC)) {
-      String path = (String) event.getProperty(FIELD_PATH);
-      if (!ignore(path)) {
-        String resourceType = (String) event.getProperty("resourceType");
-        if (resourceType != null) {
-          return getHandler(resourceType).getDeleteQueries(repositorySession,
-              event);
-        } else {
-          return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
-              event);
-        }
+      final IndexingHandler indexingHandler = getHandler(repositorySession, event);
+      if (indexingHandler != null) {
+        return indexingHandler.getDeleteQueries(repositorySession, event);
       }
     } else {
       LOGGER.debug("No delete action require on {} ", event);
     }
     return ImmutableList.of();
   }
-  
+
+  /**
+   * Because this method is not given a repository session, it might delegate
+   * to a different Index Handler than that used for getDeleteQueries and getDocuments.
+   */
 	@Override
 	public int getTtl(Event event) {
 		int ttl = Integer.MAX_VALUE;
-		for (IndexingHandler ih : indexers.values()) {
-			if (ih instanceof QoSIndexHandler) {
-				ttl = Math.min(ttl,
-						Utils.defaultMax(((QoSIndexHandler) ih).getTtl(event)));
-			}
-		}
-		if ( defaultHandler instanceof QoSIndexHandler ) {
-			ttl = Math.min(ttl,
-					Utils.defaultMax(((QoSIndexHandler) defaultHandler).getTtl(event)));
-		}
+    final IndexingHandler ih = getHandler(null, event);
+    if (ih instanceof QoSIndexHandler) {
+      ttl = Math.min(ttl,
+          Utils.defaultMax(((QoSIndexHandler) ih).getTtl(event)));
+    }
 		return ttl;
 	}
-
-
-  private IndexingHandler getHandler(String resourceType) {
-    IndexingHandler handler = indexers.get(resourceType);
-    if (handler == null) {
-      handler = defaultHandler;
-    }
-    return handler;
-  }
 
   public void addHandler(String key, IndexingHandler handler) {
     LOGGER.debug("Added New Indexer as {} at {} ",  key,
