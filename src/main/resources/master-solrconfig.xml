@@ -204,7 +204,7 @@
          when adding documents. http://wiki.apache.org/solr/UpdateXmlMessages
     -->
     <autoCommit> 
-      <!-- <maxDocs>10000</maxDocs> -->
+      <maxDocs>10000</maxDocs>
       <maxTime>1000</maxTime> 
     </autoCommit>
 
